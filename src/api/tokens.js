@@ -4,17 +4,9 @@ const { withUser } = require('./middleware.js');
 const {
   system: { users },
 } = require('../db/collections.js');
+const { checkSelfOrAdmin } = require('./users.js');
 
 const router = express.Router();
-
-// TODO: DRY - dulpicated
-const checkSelfOrAdmin = (req) => {
-  const { username } = req.params;
-  const principal = req.principal;
-  if (principal.username !== username && !principal.roles.includes('ADMIN')) {
-    throw ERROR_FORBIDDEN;
-  }
-};
 
 /*
  * =====================
@@ -55,4 +47,4 @@ router.get('/echo', async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = { router };

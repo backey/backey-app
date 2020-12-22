@@ -11,7 +11,6 @@ ERROR_FORBIDDEN.code = 403;
 
 const router = express.Router();
 
-// TODO: DRY - dulpicated
 const checkSelfOrAdmin = (req) => {
   const { username } = req.params;
   const principal = req.principal;
@@ -175,4 +174,7 @@ router.delete('/:username/roles/:role', [ADMIN_AUTH], async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = {
+  router,
+  checkSelfOrAdmin,
+};

@@ -11,8 +11,8 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-app.use('/a/users', userRoutes);
-app.use('/a/tokens', tokenRoutes);
+app.use('/a/users', userRoutes.router);
+app.use('/a/tokens', tokenRoutes.router);
 
 app.get('/', (req, res) => {
   res.send({ message: 'Hello World!' });
