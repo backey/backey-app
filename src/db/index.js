@@ -49,7 +49,7 @@ const getSystemDb = (collectionId) => {
   return getDb(path.join(DATA_PATH, REALM_SYSTEM, collectionId));
 };
 
-// TODO: get project DB
+// TODO: get project DB to enumerate collections within a project
 
 const system = {
   realm: REALM_SYSTEM,

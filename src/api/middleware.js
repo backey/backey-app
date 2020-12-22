@@ -3,7 +3,7 @@ const {
   system: { users },
 } = require('../db/collections.js');
 
-const TOKEN_PATTERN = /^bearer\s+([A-Za-z0-9=.-]+)\w*$/i;
+const TOKEN_PATTERN = /^bearer\s+([\w.=-]+)\w*$/i;
 const ERROR_UNAUTHORIZED = new Error('invalid authorization header');
 ERROR_UNAUTHORIZED.code = 401;
 const ERROR_FORBIDDEN = new Error('insufficient priviledges');

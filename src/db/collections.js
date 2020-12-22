@@ -11,9 +11,10 @@ const system = {
   users,
 };
 
-// TODO: initialize system collections with default users/projects
+// initialize system collections with default users/projects
 (async () => {
   await users.init();
+  // TODO: initialize projects
 })();
 
 module.exports = {

@@ -10,7 +10,7 @@ const AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET;
 const AUTH_JWT_EXP = process.env.AUTH_JWT_EXP;
 const AUTH_JWT_ISS = process.env.AUTH_JWT_ISS;
 const AUTH_PASSWORD_SALT = process.env.AUTH_PASSWORD_SALT;
-const AUTH_DEFAULT_USER = process.env.AUTH_DEFAULT_USER;
+const AUTH_DEFAULT_ADMIN = process.env.AUTH_DEFAULT_ADMIN;
 const AUTH_DEFAULT_PASS = process.env.AUTH_DEFAULT_PASS;
 
 const hash = (password) =>
@@ -23,13 +23,14 @@ class Users extends Collection {
 
   async init() {
     let admin = await this.get('backmin');
-    console.log(admin);
     if (!admin.value) {
       console.log(
-        `Creating ADMIN account for ${AUTH_DEFAULT_USER} with default password="${AUTH_DEFAULT_PASS}." Please rotate the password to something when reasonably possible`,
+        `Creating ADMIN account for ${AUTH_DEFAULT_ADMIN} with default password="${AUTH_DEFAULT_PASS}." Please rotate the password to something when reasonably possible`,
       );
-      await this.register(AUTH_DEFAULT_USER, AUTH_DEFAULT_PASS);
-      await this.addRole(AUTH_DEFAULT_USER, 'ADMIN');
+      await this.register(AUTH_DEFAULT_ADMIN, AUTH_DEFAULT_PASS);
+      await this.addRole(AUTH_DEFAULT_ADMIN, 'ADMIN');
+      await this.register('u', AUTH_DEFAULT_PASS);
+      await this.register('u2', AUTH_DEFAULT_PASS);
     }
   }
 
@@ -90,7 +91,7 @@ class Users extends Collection {
   }
 
   async getValidBasicUser(username, providedPassword) {
-    const existing = await this._get(username);
+    const existing = await this.get(username);
     if (!existing.value) {
       throw new Error(`User ${username} does not exist`);
     }
