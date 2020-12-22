@@ -1,10 +1,16 @@
 {
-  "name": "server",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "backey-server",
+  "version": "0.1.0",
+  "description": "REST/WebSocket backend for side projects and POC's",
+  "main": "src/main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/main.js",
+    "dev": "nodemon --config nodemon.json src/main.js",
+    "test": "mocha --reporter spec",
+    "docker:build": "docker build -t backey/server .",
+    "docker:run": "docker run --rm -p 33030:3030 -t backey/server",
+    "docker:push": "docker push backey/server",
+    "deploy:dev": "kubectl apply -f k8s/dev.deployment.yaml"
   },
   "keywords": [],
   "author": "",
@@ -12,8 +18,10 @@
   "dependencies": {
     "axios": "^0.21.0",
     "cors": "^2.8.5",
+    "crypto-js": "^4.0.0",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
     "leveldown": "^5.6.0",
     "levelup": "^4.4.0",
     "lodash": "^4.17.20",

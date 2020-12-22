@@ -1,0 +1,35 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: backey-server-dev
+spec:
+  type: LoadBalancer
+  selector:
+    app: backey-server-dev
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 3030
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backey-server-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backey-server-dev
+  template:
+    metadata:
+      labels:
+        app: backey-server-dev
+    spec:
+      containers:
+        - name: backey-server-dev
+          image: backey/server
+          ports:
+            - containerPort: 3030
+              protocol: TCP
