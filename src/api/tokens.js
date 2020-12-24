@@ -1,10 +1,8 @@
 const express = require('express');
 const _ = require('lodash');
-const { withUser } = require('./middleware.js');
 const {
   system: { users },
 } = require('../db/collections.js');
-const { checkSelfOrAdmin } = require('./users.js');
 
 const router = express.Router();
 
@@ -17,16 +15,10 @@ const router = express.Router();
 /**
  * Generate a new token
  */
-router.post('/', [withUser], async (req, res) => {
-  try {
-    checkSelfOrAdmin(req);
-  } catch ({ code, message }) {
-    console.error(message);
-    res.status(code).send({ message });
-  }
+router.post('/', async (req, res) => {
   const { username, password } = req.body;
   try {
-    users.getValidBasicUser(username, password);
+    await users.getValidBasicUser(username, password);
     const token = await users.getUserToken(username);
     res.send({ token });
   } catch (error) {

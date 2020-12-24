@@ -77,7 +77,8 @@ class Collection {
       const data = await this.db.get(key);
       return from(data);
     } catch (error) {
-      console.error(error);
+      //   console.error(error);
+      console.trace(error);
     }
     return { key, value: null };
   }

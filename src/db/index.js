@@ -55,6 +55,7 @@ const system = {
   realm: REALM_SYSTEM,
   projects: getSystemDb('projects'),
   users: getSystemDb('users'),
+  userAuth: getSystemDb('userAuth'),
 };
 
 module.exports = {

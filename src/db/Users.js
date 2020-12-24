@@ -3,7 +3,7 @@ const _ = require('lodash');
 const jwt = require('jsonwebtoken');
 const { Collection } = require('./Collection');
 const {
-  system: { users },
+  system: { users, userAuth },
 } = require('./index.js');
 
 const AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET;
@@ -17,8 +17,9 @@ const hash = (password) =>
   SHA256(`${AUTH_PASSWORD_SALT}::${password}`).toString();
 
 class Users extends Collection {
-  constructor(db = users) {
+  constructor(db = users, userAuthDb = userAuth) {
     super(db);
+    this.userAuthCollection = new Collection(userAuthDb);
   }
 
   async init() {
@@ -40,8 +41,9 @@ class Users extends Collection {
       throw new Error('Username already exists');
     }
     const pHash = hash(password);
-    // TODO: I REALLY need to move pHash to another collection... maybey `system.usersAuth`
-    const model = { username, pHash, roles: ['USER'] };
+    const authModel = { username, pHash };
+    const model = { username, roles: ['USER'] };
+    await this.userAuthCollection.put(username, authModel);
     await this.put(username, model);
     const updated = await this.get(username);
     return updated;
@@ -49,11 +51,11 @@ class Users extends Collection {
 
   async updatePassword(username, oldPassword, newPassword) {
     const existing = await this.getValidBasicUser(username, oldPassword);
-    const model = {
+    const authModel = {
       ...existing.value,
       pHash: hash(newPassword),
     };
-    await this.put(username, model);
+    await this.userAuthCollection.put(username, authModel);
     const updated = await this.get(username);
     return updated;
   }
@@ -91,7 +93,7 @@ class Users extends Collection {
   }
 
   async getValidBasicUser(username, providedPassword) {
-    const existing = await this.get(username);
+    const existing = await this.userAuthCollection.get(username);
     if (!existing.value) {
       throw new Error(`User ${username} does not exist`);
     }
@@ -113,7 +115,6 @@ class Users extends Collection {
   }
 
   async getUserToken(username) {
-    const existing = await this.get(username);
     const payload = {}; // TODO: what to include? + make configuration
     const token = jwt.sign(payload, AUTH_JWT_SECRET, {
       expiresIn: AUTH_JWT_EXP,
