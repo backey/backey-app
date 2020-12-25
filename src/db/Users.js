@@ -18,7 +18,7 @@ const hash = (password) =>
 
 class Users extends Collection {
   constructor(db = users, userAuthDb = userAuth) {
-    super(db);
+    super(db /* TODO: authorication strategy */);
     this.userAuthCollection = new Collection(userAuthDb);
   }
 

@@ -1,4 +1,8 @@
 const _ = require('lodash');
+const {
+  authR: { openAuthRStrategy },
+  ctx: { anonCtx },
+} = require('./Authorization.js');
 
 // TODO: updated by
 const to = (key, value, oldRow, principal) => {
@@ -25,16 +29,20 @@ class Collection {
   /**
    *
    * @param {object} db levelup database from `/src/db/index.js::get*Db(...)`
+   * @param {AuthorizationStrategy} authorizationStrategy Strategy should handle at least
+   *   the following operations: `[count, info, put, get, list, remove, truncate]`
    */
-  constructor(db) {
+  // TODO: locked by default?
+  constructor(db, authorizationStrategy = openAuthRStrategy) {
     this.db = db;
-    // TODO: AuthorizationStrategy
+    this.authR = authorizationStrategy;
   }
   /**
    * See https://www.npmjs.com/package/levelup#dbcreatereadstreamoptions
    * @param {*} options
    */
-  count(options) {
+  count(options, ctx = anonCtx) {
+    this.authR.check(ctx.principal, 'count', null, this);
     return new Promise((res, rej) => {
       let count = 0;
       this.db
@@ -53,13 +61,14 @@ class Collection {
         });
     });
   }
-  async info() {
-    const count = await this.count();
+  async info(ctx = anonCtx) {
+    this.authR.check(ctx.principal, 'info', null, this);
+    const count = await this.count(ctx);
     let first = null;
     let last = null;
     if (count > 0) {
-      first = (await this.list({ limit: 1 }))[0];
-      last = (await this.list({ limit: 1, reverse: true }))[0];
+      first = (await this.list({ limit: 1 }, ctx))[0];
+      last = (await this.list({ limit: 1, reverse: true }, ctx))[0];
       if (first.key === last.key) {
         last = null;
       }
@@ -70,14 +79,17 @@ class Collection {
       last,
     };
   }
-  async put(key, value) {
+  async put(key, value, ctx = anonCtx) {
+    const { principal } = ctx;
+    this.authR.check(principal, 'put', null, this);
     // TODO: updated by...
-    const oldRow = await this.get(key);
-    const { row, binRow } = to(key, value, oldRow);
+    const oldRow = await this.get(key, ctx);
+    const { row, binRow } = to(key, value, oldRow, principal);
     await this.db.put(key, binRow);
     return row;
   }
-  async get(key) {
+  async get(key, ctx = anonCtx) {
+    this.authR.check(ctx.principal, 'get', null, this);
     try {
       const data = await this.db.get(key);
       return from(data);
@@ -91,7 +103,8 @@ class Collection {
    * See https://www.npmjs.com/package/levelup#dbcreatereadstreamoptions
    * @param {*} options
    */
-  list(options = {}) {
+  list(options = {}, ctx = anonCtx) {
+    this.authR.check(ctx.principal, 'list', null, this);
     options.keys = false;
     return new Promise((res, rej) => {
       let rows = [];
@@ -114,15 +127,17 @@ class Collection {
         });
     });
   }
-  async remove(key) {
-    const curr = await this.get(key);
+  async remove(key, ctx = anonCtx) {
+    this.authR.check(ctx.principal, 'remove', null, this);
+    const curr = await this.get(key, ctx);
     if (!!curr) {
       await this.db.del(key);
     }
     return curr;
   }
-  async truncate() {
-    const count = await this.count();
+  async truncate(ctx = anonCtx) {
+    this.authR.check(ctx.principal, 'truncate', null, this);
+    const count = await this.count(ctx);
     await this.db.clear();
     return count;
   }
