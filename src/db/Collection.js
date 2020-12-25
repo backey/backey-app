@@ -1,8 +1,11 @@
 const _ = require('lodash');
-const { getDb, getCollectionsDb } = require('./index.js');
 
-const to = (key, value) => {
-  const row = { key, value, updatedAt: Date.now() };
+// TODO: updated by
+const to = (key, value, oldRow, principal) => {
+  const row = { key, value: { ...value, id: key }, updatedAt: Date.now() };
+  row.updatedBy = _.get(principal, 'id', null);
+  row.createdAt = _.get(oldRow, 'createdAt', row.updatedAt);
+  row.createdBy = _.get(oldRow, 'createdBy', row.updatedBy);
   const binRow = Buffer.from(JSON.stringify(row));
   return { row, binRow };
 };
@@ -25,6 +28,7 @@ class Collection {
    */
   constructor(db) {
     this.db = db;
+    // TODO: AuthorizationStrategy
   }
   /**
    * See https://www.npmjs.com/package/levelup#dbcreatereadstreamoptions
@@ -68,7 +72,8 @@ class Collection {
   }
   async put(key, value) {
     // TODO: updated by...
-    const { row, binRow } = to(key, value);
+    const oldRow = await this.get(key);
+    const { row, binRow } = to(key, value, oldRow);
     await this.db.put(key, binRow);
     return row;
   }
