@@ -12,8 +12,12 @@ let DATA_PATH = process.env.DB_DATA_PATH;
 
 if (!DATA_PATH) {
   if (process.env.NODE_ENV === 'testing') {
-    const dataDir = tmp.dirSync();
+    const dataDir = tmp.dirSync({
+      keep: false,
+      unsafeCleanup: true,
+    });
     DATA_PATH = dataDir.name;
+    process.on('beforeExit', () => dataDir.removeCallback());
   } else {
     throw new Error('Persistent data path not found');
   }

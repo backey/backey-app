@@ -37,7 +37,7 @@ router.get('/_info', async (req, res) => {
 router.get('/_count', async (req, res) => {
   const { principal } = req;
   const rs = await users.count(principal);
-  res.send(rs);
+  res.send({ count: rs });
 });
 
 /**
