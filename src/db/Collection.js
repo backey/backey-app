@@ -37,6 +37,9 @@ class Collection {
     this.db = db;
     this.authR = authorizationStrategy;
   }
+  _check(principal, operation, targetId) {
+    this.authR.check(principal, operation, targetId, this);
+  }
   /**
    * See https://www.npmjs.com/package/levelup#dbcreatereadstreamoptions
    * @param {*} options
@@ -95,7 +98,7 @@ class Collection {
       return from(data);
     } catch (error) {
       //   console.error(error);
-      console.trace(error);
+      // TODO: log levels? console.trace(error);
     }
     return { key, value: null };
   }

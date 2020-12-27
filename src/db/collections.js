@@ -1,8 +1,9 @@
 const { Collection } = require('./Collection.js');
 const { Users } = require('./Users.js');
+const { Projects } = require('./Projects.js');
 const { system: systemDBs } = require('./index.js');
 
-const projects = new Collection(systemDBs.projects);
+const projects = new Projects(systemDBs.projects);
 const users = new Users(systemDBs.users);
 const userAuth = new Collection(systemDBs.userAuth);
 
@@ -16,7 +17,7 @@ const system = {
 // initialize system collections with default users/projects
 (async () => {
   await users.init();
-  // TODO: initialize projects
+  await projects.init(); // can/should this be done in parallel?
 })();
 
 module.exports = {

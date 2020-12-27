@@ -1,23 +1,11 @@
+'strict';
 const express = require('express');
 const _ = require('lodash');
-const { withUser, withUserRole } = require('./middleware.js');
 const {
   system: { users },
 } = require('../db/collections.js');
 
-const ADMIN_AUTH = withUserRole('ADMIN');
-const ERROR_FORBIDDEN = new Error('insufficient privileges');
-ERROR_FORBIDDEN.code = 403;
-
 const router = express.Router();
-
-const checkSelfOrAdmin = (req) => {
-  const { username } = req.params;
-  const principal = req.principal;
-  if (principal.username !== username && !principal.roles.includes('ADMIN')) {
-    throw ERROR_FORBIDDEN;
-  }
-};
 
 /*
  * =====================
@@ -28,35 +16,40 @@ const checkSelfOrAdmin = (req) => {
 /**
  * List users
  */
-router.get('/', [ADMIN_AUTH], async (req, res) => {
-  const rs = await users.list();
+router.get('/', async (req, res) => {
+  const { principal } = req;
+  const rs = await users.list(principal);
   res.send(rs);
 });
 
 /**
  * Get Users collection information
  */
-router.get('/_info', [ADMIN_AUTH], async (req, res) => {
-  const rs = await users.info();
+router.get('/_info', async (req, res) => {
+  const { principal } = req;
+  const rs = await users.info(principal);
   res.send(rs);
 });
 
 /**
  * Count users in collection
  */
-router.get('/_count', [ADMIN_AUTH], async (req, res) => {
-  const rs = await users.count();
+router.get('/_count', async (req, res) => {
+  const { principal } = req;
+  const rs = await users.count(principal);
   res.send(rs);
 });
 
 /**
  * Truncate and re-initilize admin collection
  */
-router.delete('/', [ADMIN_AUTH], async (req, res) => {
-  const before = await users.info();
-  await users.truncate();
-  await users.init();
-  const after = await users.info();
+router.delete('/', async (req, res) => {
+  // TODO: AuthR check for all operations
+  const { principal } = req;
+  const before = await users.info(principal);
+  await users.truncate(principal);
+  await users.init(principal);
+  const after = await users.info(principal);
   res.send({ before, after });
 });
 
@@ -89,17 +82,17 @@ router.post('/', async (req, res) => {
 /**
  * Update user password
  */
-router.put('/:username', [withUser], async (req, res) => {
+router.put('/:username', async (req, res) => {
   try {
-    checkSelfOrAdmin(req);
+    const { principal } = req;
     const { newPassword, oldPassword } = req.body;
     const { username } = req.params;
-    const principal = req.principal;
-    if (principal.username !== username && !principal.roles.includes('ADMIN')) {
-      res.status(403).send({ message: 'insufficient privileges' });
-      return;
-    }
-    const user = await users.updatePassword(username, oldPassword, newPassword);
+    const user = await users.updatePassword(
+      username,
+      oldPassword,
+      newPassword,
+      principal,
+    );
     res.send(user);
   } catch ({ code = 500, message }) {
     console.error(message);
@@ -110,11 +103,11 @@ router.put('/:username', [withUser], async (req, res) => {
 /**
  * Fetch use details by id
  */
-router.get('/:username', [withUser], async (req, res) => {
+router.get('/:username', async (req, res) => {
   try {
-    checkSelfOrAdmin(req);
+    const { principal } = req;
     const { username } = req.params;
-    const existing = await users.get(username);
+    const existing = await users.get(username, principal);
     res.send(existing);
   } catch ({ code = 500, message }) {
     console.error(message);
@@ -125,13 +118,13 @@ router.get('/:username', [withUser], async (req, res) => {
 /**
  * Delete user by id
  */
-router.delete('/:username', [withUser], async (req, res) => {
+router.delete('/:username', async (req, res) => {
   try {
-    checkSelfOrAdmin(req);
+    const { principal } = req;
     const { username } = req.params;
-    const existing = await users.get(username);
+    const existing = await users.get(username, principal);
     if (!!existing.value) {
-      await users.remove(username);
+      await users.remove(username, principal);
     }
     res.send(existing);
   } catch ({ code = 500, message }) {
@@ -149,10 +142,11 @@ router.delete('/:username', [withUser], async (req, res) => {
 /**
  * Add role to user. Idempotent.
  */
-router.post('/:username/roles/:role', [ADMIN_AUTH], async (req, res) => {
+router.post('/:username/roles/:role', async (req, res) => {
+  const { principal } = req;
   const { username, role } = req.params;
   try {
-    const user = await users.addRole(username, role);
+    const user = await users.addRole(username, role, principal);
     res.send(user);
   } catch (error) {
     console.error(error);
@@ -163,10 +157,11 @@ router.post('/:username/roles/:role', [ADMIN_AUTH], async (req, res) => {
 /**
  * Remove role from user. Idempotent.
  */
-router.delete('/:username/roles/:role', [ADMIN_AUTH], async (req, res) => {
+router.delete('/:username/roles/:role', async (req, res) => {
+  const { principal } = req;
   const { username, role } = req.params;
   try {
-    const user = await users.removeRole(username, role);
+    const user = await users.removeRole(username, role, principal);
     res.send(user);
   } catch (error) {
     console.error(error);
@@ -176,5 +171,4 @@ router.delete('/:username/roles/:role', [ADMIN_AUTH], async (req, res) => {
 
 module.exports = {
   router,
-  checkSelfOrAdmin,
 };

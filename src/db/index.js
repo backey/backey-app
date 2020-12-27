@@ -1,16 +1,22 @@
 const fs = require('fs');
 const path = require('path');
+const tmp = require('tmp');
 const levelup = require('levelup');
 const leveldown = require('leveldown');
 
 const CACHE = {};
 
-const DATA_PATH = process.env.DB_DATA_PATH;
 const REALM_APP = 'app';
 const REALM_SYSTEM = 'system';
+let DATA_PATH = process.env.DB_DATA_PATH;
 
 if (!DATA_PATH) {
-  throw new Error('Persistent data path not found');
+  if (process.env.NODE_ENV === 'testing') {
+    const dataDir = tmp.dirSync();
+    DATA_PATH = dataDir.name;
+  } else {
+    throw new Error('Persistent data path not found');
+  }
 }
 
 const getDb = (dbFilePath) => {

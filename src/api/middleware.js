@@ -10,51 +10,56 @@ const ERROR_FORBIDDEN = new Error('insufficient priviledges');
 ERROR_FORBIDDEN.code = 403;
 const HTTP_CODE_INTERNAL_SERVER_ERROR = 500;
 
-// TODO: caching? It should probably be pused down to the collection/db layer
+// TODO:  caching with LRU eviction? It should probably be pused down to the collection/db layer
 
-const getValidJwtUser = async (req) => {
+const anonId = 'anonymous';
+
+const getAuthUser = async (req) => {
   const authHeader = _.get(req, 'headers.authorization');
   if (!authHeader || !TOKEN_PATTERN.test(authHeader)) {
-    throw ERROR_UNAUTHORIZED;
+    // TODO: reserved username on registration
+    return {
+      token: null,
+      principal: {
+        id: anonId,
+        username: anonId,
+        roles: ['ANONYMOUS'],
+        error: 'missing token',
+      },
+    };
   }
   const token = TOKEN_PATTERN.exec(authHeader)[1];
   try {
-    const existing = await users.getValidJwtUser(token);
-    return { token, principal: existing.value };
+    const { value: principal } = await users.getValidJwtUser(token);
+    if (!!principal) {
+      return { token, principal };
+    }
   } catch (error) {
     console.error(error);
-    throw ERROR_UNAUTHORIZED;
   }
+  return {
+    token,
+    principal: {
+      id: anonId,
+      username: anonId,
+      roles: ['ANONYMOUS'],
+      error: 'invalid token',
+    },
+  };
 };
 
 const withUser = async (req, res, next) => {
   try {
-    const { token, principal } = await getValidJwtUser(req);
+    const { token, principal } = await getAuthUser(req);
     req.token = token;
     req.principal = principal;
     next();
   } catch ({ code = HTTP_CODE_INTERNAL_SERVER_ERROR, message }) {
-    res.status(code).send({ message });
-  }
-};
-
-const withUserRole = (role) => async (req, res, next) => {
-  try {
-    const { token, principal } = await getValidJwtUser(req);
-    if (principal.roles.includes(role)) {
-      req.token = token;
-      req.principal = principal;
-
-      next();
-    } else {
-      throw ERROR_FORBIDDEN;
-    }
-  } catch ({ code = HTTP_CODE_INTERNAL_SERVER_ERROR, message }) {
+    // TODO: support anonymous users
     res.status(code).send({ message });
   }
 };
 
 module.exports = {
   withUser,
-  withUserRole,
 };

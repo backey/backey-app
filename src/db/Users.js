@@ -1,17 +1,21 @@
 const { SHA256 } = require('crypto-js');
 const _ = require('lodash');
 const jwt = require('jsonwebtoken');
+const { nanoid } = require('nanoid');
 const { Collection } = require('./Collection');
 const {
   system: { users, userAuth },
 } = require('./index.js');
+const {
+  ctx: { anonCtx },
+} = require('./Authorization.js');
 
-const AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET;
-const AUTH_JWT_EXP = process.env.AUTH_JWT_EXP;
-const AUTH_JWT_ISS = process.env.AUTH_JWT_ISS;
-const AUTH_PASSWORD_SALT = process.env.AUTH_PASSWORD_SALT;
-const AUTH_DEFAULT_ADMIN = process.env.AUTH_DEFAULT_ADMIN;
-const AUTH_DEFAULT_PASS = process.env.AUTH_DEFAULT_PASS;
+const AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET || 'backey20201226';
+const AUTH_JWT_EXP = process.env.AUTH_JWT_EXP || '12h';
+const AUTH_JWT_ISS = process.env.AUTH_JWT_ISS || 'backey:)';
+const AUTH_PASSWORD_SALT = process.env.AUTH_PASSWORD_SALT || 'backey20201226';
+const AUTH_DEFAULT_ADMIN = process.env.AUTH_DEFAULT_ADMIN || 'backmin';
+const AUTH_DEFAULT_PASS = process.env.AUTH_DEFAULT_PASS || 'backback'; // TODO: randomize, e.g. nanoid(16);
 
 const hash = (password) =>
   SHA256(`${AUTH_PASSWORD_SALT}::${password}`).toString();
@@ -22,7 +26,8 @@ class Users extends Collection {
     this.userAuthCollection = new Collection(userAuthDb);
   }
 
-  async init() {
+  async init(ctx = anonCtx) {
+    this._check(ctx.principal, 'init', null);
     let admin = await this.get('backmin');
     if (!admin.value) {
       console.log(
@@ -35,7 +40,8 @@ class Users extends Collection {
     }
   }
 
-  async register(username, password) {
+  async register(username, password, ctx = anonCtx) {
+    this._check(ctx.principal, 'register', null);
     const existing = await this.get(username);
     if (!!existing.value) {
       throw new Error('Username already exists');
@@ -49,7 +55,8 @@ class Users extends Collection {
     return updated;
   }
 
-  async updatePassword(username, oldPassword, newPassword) {
+  async updatePassword(username, oldPassword, newPassword, ctx = anonCtx) {
+    this._check(ctx.principal, 'updatePassword', username);
     const existing = await this.getValidBasicUser(username, oldPassword);
     const authModel = {
       ...existing.value,
@@ -60,7 +67,8 @@ class Users extends Collection {
     return updated;
   }
 
-  async addRole(username, role) {
+  async addRole(username, role, ctx = anonCtx) {
+    this._check(ctx.principal, 'addRole', username);
     const existing = await this.get(username);
     if (!existing.value) {
       throw new Error(`ADD_ROLE: User doesn't exist "${username}"`);
@@ -76,7 +84,8 @@ class Users extends Collection {
     }
   }
 
-  async removeRole(username, role) {
+  async removeRole(username, role, ctx = anonCtx) {
+    this._check(ctx.principal, 'removeRole', null);
     const existing = await this.get(username);
     if (!existing.value) {
       throw new Error(`REMOVE_ROLE: User doesn't exist "${username}"`);
@@ -93,25 +102,32 @@ class Users extends Collection {
   }
 
   async getValidBasicUser(username, providedPassword) {
-    const existing = await this.userAuthCollection.get(username);
-    if (!existing.value) {
+    const [auth, existing] = await Promise.all([
+      this.userAuthCollection.get(username),
+      this.get(username),
+    ]);
+    if (!auth.value || !existing.value) {
       throw new Error(`User ${username} does not exist`);
     }
-    if (existing.value.pHash !== hash(providedPassword)) {
+    const pHash = hash(providedPassword);
+    if (auth.value.pHash !== pHash) {
       throw new Error(`User's ${username} passwords do not match: 
-        curr(${existing.value.pHash}) != provided(${hash(providedPassword)})`);
+        curr(${auth.value.pHash}) != provided(${pHash})`);
+      // TODO: logging and reasonable error
     }
     return existing;
   }
 
   async getValidJwtUser(token) {
-    const payload = this.validateToken(token);
-    const username = payload.sub;
-    const existing = await this.get(username);
-    if (!existing.value) {
-      throw new Error(`User ${username} does not exist`);
+    try {
+      const payload = this.validateToken(token);
+      const username = payload.sub;
+      const existing = await this.get(username);
+      return existing;
+    } catch (error) {
+      // console.error(error); // TODO: logging levels
     }
-    return existing;
+    return { key: null, value: null };
   }
 
   async getUserToken(username) {

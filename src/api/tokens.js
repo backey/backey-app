@@ -28,14 +28,14 @@ router.post('/', async (req, res) => {
 });
 
 // TODO: better route/verb?
-router.get('/echo', async (req, res) => {
+router.get('/check', async (req, res) => {
   const { token } = req.query;
   try {
     const payload = users.validateToken(token);
     res.send(payload);
   } catch (error) {
     console.error(error);
-    res.status(400).send({ message: 'Failed to generate token' });
+    res.status(400).send({ message: 'Invalid bearker token' });
   }
 });
 
